@@ -1,20 +1,24 @@
-name: Test Custom Action
+name: Check tests
 
 on: [push, pull_request]
 
+env:
+  UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+
 jobs:
-  testAllModes:
-    name: Test in ${{ matrix.testMode }}
+  buildAndTestForSomePlatforms:
+    name: Build for ${{ matrix.targetPlatform }} on version ${{ matrix.unityVersion }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         projectPath:
           - ./
-        testMode:
-          - playmode
-          - editmode
-          - standalone
+        unityVersion:
+          - 2022.3.10f1
+        targetPlatform:
+          - StandaloneWindows64 # Build a Windows 64-bit standalone.
+
     steps:
       - uses: actions/checkout@v2
         with:
@@ -22,21 +26,19 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: ${{ matrix.projectPath }}/Library
-          key: Library-${{ matrix.projectPath }}
+          key: Library-${{ matrix.projectPath }}-${{ matrix.targetPlatform }}
           restore-keys: |
+            Library-${{ matrix.projectPath }}-
             Library-
       - uses: game-ci/unity-test-runner@v3
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        id: testRunner
         with:
           projectPath: ${{ matrix.projectPath }}
-          unityVersion: 2022.3.10f1
-          githubToken: ${{ secrets.GITHUB_TOKEN }}
-          testMode: ${{ matrix.testMode }}
-          artifactsPath: ${{ matrix.testMode }}-artifacts
-          checkName: ${{ matrix.testMode }} Test Results
-
-
+          unityVersion: ${{ matrix.unityVersion }}
+      - uses: actions/upload-artifact@v1
+        with:
+          name: Test results (all modes)
+          path: ${{ steps.testRunner.outputs.artifactsPath }}
 
 
 
